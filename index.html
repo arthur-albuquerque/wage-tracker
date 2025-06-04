@@ -71,8 +71,8 @@
                     <div class="mb-3">
                         <label for="shiftType" class="form-label">Shift Type</label>
                         <select class="form-control" id="shiftType">
-                            <option value="extra">Extra Shift (+)</option>
-                            <option value="given">Given Shift (-)</option>
+                            <option value="extra">Extra Shift (Increases Wage)</option>
+                            <option value="given">Given Shift (Decreases Wage)</option>
                         </select>
                     </div>
                 </div>
@@ -121,7 +121,7 @@
             const sources = [];
             const sourceInputs = document.querySelectorAll('.source-input');
             for (let input of sourceInputs) {
-                const name = input.querySelector('.source-name').value;
+                const name = input.querySelector('.source-name').value.trim();
                 const wage = parseFloat(input.querySelector('.base-wage').value);
                 if (name && !isNaN(wage)) {
                     sources.push({ name, baseWage: wage, shifts: [] });
@@ -130,6 +130,7 @@
             if (sources.length === 0) return alert('Please add at least one valid source.');
 
             wageData[monthYear] = sources;
+            console.log('Month saved:', monthYear, sources); // Debug log
             saveData();
             renderTabs();
             bootstrap.Modal.getInstance(document.getElementById('addMonthModal')).hide();
@@ -145,85 +146,147 @@
             
             if (!date || isNaN(amount)) return alert('Please fill in all fields correctly.');
 
-            const source = wageData[monthYear].find(s => s.name === sourceName);
+            const monthData = wageData[monthYear];
+            if (!monthData) return alert('Month data not found.');
+
+            const source = monthData.find(s => s.name === sourceName);
             if (source) {
                 source.shifts.push({ date, amount, isExtra });
+                console.log('Shift saved:', { monthYear, sourceName, date, amount, isExtra }); // Debug log
                 saveData();
                 renderTabs();
                 bootstrap.Modal.getInstance(document.getElementById('addShiftModal')).hide();
+            } else {
+                console.error('Source not found:', sourceName);
             }
         }
 
         function deleteShift(monthYear, sourceName, shiftIndex) {
-            wageData[monthYear].find(s => s.name === sourceName).shifts.splice(shiftIndex, 1);
-            saveData();
-            renderTabs();
+            const monthData = wageData[monthYear];
+            if (!monthData) return console.error('Month not found:', monthYear);
+
+            const source = monthData.find(s => s.name === sourceName);
+            if (source) {
+                source.shifts.splice(shiftIndex, 1);
+                console.log('Shift deleted:', { monthYear, sourceName, shiftIndex }); // Debug log
+                saveData();
+                renderTabs();
+            } else {
+                console.error('Source not found:', sourceName);
+            }
         }
 
         function saveData() {
             localStorage.setItem('wageData', JSON.stringify(wageData));
+            console.log('Saved data:', wageData); // Debug log
+        }
+
+        function escapeHtml(unsafe) {
+            return unsafe
+                .replace(/&/g, "&amp;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;")
+                .replace(/"/g, "&quot;")
+                .replace(/'/g, "&#039;");
         }
 
         function renderTabs() {
-            const tabs = document.getElementById('monthTabs');
-            const content = document.getElementById('monthTabContent');
-            tabs.innerHTML = '';
-            content.innerHTML = '';
+            try {
+                const tabs = document.getElementById('monthTabs');
+                const content = document.getElementById('monthTabContent');
+                if (!tabs || !content) throw new Error('Tab or content element not found');
 
-            const months = Object.keys(wageData).sort().reverse();
-            months.forEach((month, index) => {
-                const isActive = index === 0 ? 'active' : '';
-                tabs.innerHTML += `
-                    <li class="nav-item" role="presentation">
-                        <button class="nav-link ${isActive}" id="${month}-tab" data-bs-toggle="tab" data-bs-target="#${month}" type="button" role="tab" aria-controls="${month}" aria-selected="${index === 0}">${month}</button>
-                    </li>
-                `;
-                
-                let totalMonthWage = 0;
-                const sourcesHTML = wageData[month].map(source => {
-                    const shiftTotal = source.shifts.reduce((sum, shift) => sum + (shift.isExtra ? shift.amount : -shift.amount), 0);
-                    const sourceTotal = source.baseWage + shiftTotal;
-                    totalMonthWage += sourceTotal;
-                    
-                    const shiftsHTML = source.shifts.map((shift, idx) => `
-                        <li class="list-group-item d-flex justify-content-between align-items-center">
-                            ${shift.date} - ${shift.isExtra ? '+' : '-'} ${shift.amount.toFixed(2)} BRL
-                            <button class="btn btn-danger btn-sm" onclick="deleteShift('${month}', '${source.name}', ${idx})">Delete</button>
+                tabs.innerHTML = '';
+                content.innerHTML = '';
+
+                const months = Object.keys(wageData).sort().reverse();
+                if (months.length === 0) {
+                    content.innerHTML = '<p>No months added yet.</p>';
+                    return;
+                }
+
+                months.forEach((month, index) => {
+                    const isActive = index === 0 ? 'active' : '';
+                    tabs.innerHTML += `
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link ${isActive}" id="${month}-tab" data-bs-toggle="tab" data-bs-target="#${month}" type="button" role="tab" aria-controls="${month}" aria-selected="${index === 0}">${month}</button>
                         </li>
-                    `).join('');
+                    `;
                     
-                    return `
-                        <div class="card source-card">
-                            <div class="card-body">
-                                <h5 class="card-title">${source.name}</h5>
-                                <p class="card-text">Base Wage: ${source.baseWage.toFixed(2)} BRL</p>
-                                <p class="card-text">Net Shifts: ${shiftTotal.toFixed(2)} BRL</p>
-                                <p class="card-text">Total: ${sourceTotal.toFixed(2)} BRL</p>
-                                <ul class="list-group shift-list">${shiftsHTML}</ul>
-                                <button class="btn btn-primary mt-2" onclick="openShiftModal('${month}', '${source.name}')">Add Shift</button>
+                    const monthData = wageData[month];
+                    if (!Array.isArray(monthData)) {
+                        console.error('Invalid month data:', month, monthData);
+                        return;
+                    }
+
+                    let totalMonthWage = 0;
+                    const sourcesHTML = monthData.map(source => {
+                        if (!source.name || typeof source.baseWage !== 'number') {
+                            console.error('Invalid source data:', source);
+                            return '';
+                        }
+
+                        const shiftTotal = Array.isArray(source.shifts)
+                            ? source.shifts.reduce((sum, shift) => sum + (shift.isExtra ? shift.amount : -shift.amount), 0)
+                            : 0;
+                        const sourceTotal = source.baseWage + shiftTotal;
+                        totalMonthWage += sourceTotal;
+
+                        const shiftsHTML = Array.isArray(source.shifts) ? source.shifts.map((shift, idx) => `
+                            <li class="list-group-item d-flex justify-content-between align-items-center">
+                                ${shift.date} - ${shift.isExtra ? '+' : '-'} ${shift.amount.toFixed(2)} BRL
+                                <button class="btn btn-danger btn-sm" onclick="deleteShift('${month}', '${escapeHtml(source.name)}', ${idx})">Delete</button>
+                            </li>
+                        `).join('') : '';
+
+                        return `
+                            <div class="card source-card">
+                                <div class="card-body">
+                                    <h5 class="card-title">${escapeHtml(source.name)}</h5>
+                                    <p class="card-text">Base Wage: ${source.baseWage.toFixed(2)} BRL</p>
+                                    <p class="card-text">Net Shifts: ${shiftTotal.toFixed(2)} BRL</p>
+                                    <p class="card-text">Total: ${sourceTotal.toFixed(2)} BRL</p>
+                                    <ul class="list-group shift-list">${shiftsHTML}</ul>
+                                    <button class="btn btn-primary mt-2" onclick="openShiftModal('${month}', '${escapeHtml(source.name)}')">Add Shift</button>
+                                </div>
                             </div>
+                        `;
+                    }).filter(Boolean).join('');
+
+                    content.innerHTML += `
+                        <div class="tab-pane fade ${isActive}" id="${month}" role="tabpanel" aria-labelledby="${month}-tab">
+                            <h3>Total Wage: ${totalMonthWage.toFixed(2)} BRL</h3>
+                            ${sourcesHTML || '<p>No wage sources added for this month.</p>'}
                         </div>
                     `;
-                }).join('');
-                
-                content.innerHTML += `
-                    <div class="tab-pane fade ${isActive}" id="${month}" role="tabpanel" aria-labelledby="${month}-tab">
-                        <h3>Total Wage: ${totalMonthWage.toFixed(2)} BRL</h3>
-                        ${sourcesHTML}
-                    </div>
-                `;
-            });
+                });
+            } catch (error) {
+                console.error('Error rendering tabs:', error);
+                document.getElementById('monthTabContent').innerHTML = '<p>Error loading data. Check console for details.</p>';
+            }
         }
 
         function openShiftModal(monthYear, sourceName) {
-            const modal = document.getElementById('addShiftModal');
-            modal.dataset.month = monthYear;
-            const sourceSelect = document.getElementById('shiftSource');
-            sourceSelect.innerHTML = wageData[monthYear].map(s => `<option value="${s.name}" ${s.name === sourceName ? 'selected' : ''}>${s.name}</option>`).join('');
-            new bootstrap.Modal(modal).show();
+            try {
+                const modal = document.getElementById('addShiftModal');
+                if (!modal) throw new Error('Shift modal not found');
+                
+                modal.dataset.month = monthYear;
+                const sourceSelect = document.getElementById('shiftSource');
+                if (!sourceSelect) throw new Error('Source select element not found');
+
+                const monthData = wageData[monthYear];
+                if (!monthData) throw new Error('Month data not found: ' + monthYear);
+
+                sourceSelect.innerHTML = monthData.map(s => `
+                    <option value="${escapeHtml(s.name)}" ${s.name === sourceName ? 'selected' : ''}>${escapeHtml(s.name)}</option>
+                `).join('');
+                new bootstrap.Modal(modal).show();
+            } catch (error) {
+                console.error('Error opening shift modal:', error);
+            }
         }
 
-        // Initialize sources when modal is shown
         document.getElementById('addMonthModal').addEventListener('show.bs.modal', populatePreviousSources);
 
         window.onload = renderTabs;
