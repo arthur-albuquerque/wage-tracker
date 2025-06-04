@@ -305,11 +305,11 @@
 
         function escapeHtml(unsafe) {
             return (unsafe || '')
-                .replace(/&/g, "&")
-                .replace(/</g, "<")
-                .replace(/>/g, ">")
-                .replace(/"/g, """)
-                .replace(/'/g, "'");
+                .replace(/&/g, "&amp;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;")
+                .replace(/"/g, "&quot;")
+                .replace(/'/g, "&#039;");
         }
 
         function renderTabs() {
@@ -335,7 +335,7 @@
                     tabs.innerHTML += `
                         <li class="nav-item" role="presentation">
                             <button class="nav-link ${isActive}" id="${month}-tab" data-bs-toggle="tab" data-bs-target="#${month}" type="button" role="tab" aria-controls="${month}" aria-selected="${index === 0}">${month}</button>
-                            <button class="btn btn-danger btn-sm ms-2" onclick="deleteMonth('${month}')">Delete Month</button>
+                            <button class="btn btn-danger btn-sm ms-2" onclick="deleteMonth('${escapeHtml(month)}')">Delete Month</button>
                         </li>
                     `;
                     
@@ -361,7 +361,7 @@
                         const shiftsHTML = Array.isArray(source.shifts) ? source.shifts.map((shift, idx) => `
                             <li class="list-group-item d-flex justify-content-between align-items-center">
                                 ${shift.date} - ${shift.isExtra ? '+' : '-'} ${shift.amount.toFixed(2)} BRL
-                                <button class="btn btn-danger btn-sm" onclick="deleteShift('${month}', ${sourceIndex}, ${idx})">Delete</button>
+                                <button class="btn btn-danger btn-sm" onclick="deleteShift('${escapeHtml(month)}', ${sourceIndex}, ${idx})">Delete</button>
                             </li>
                         `).join('') : '';
 
@@ -370,10 +370,10 @@
                                 <div class="card-body">
                                     <h5 class="card-title">${escapeHtml(source.name)}</h5>
                                     <p class="card-text">Base Wage: ${source.baseWage.toFixed(2)} BRL</p>
-                                    <p class="card-text">Net Shifts: ${shiftTotal.toFixed(2)} BRL</p>
-                                    <p class="card-text">Total: ${sourceTotal.toFixed(2)} BRL</p>
+                                    <p card-text">Net Shifts: ${shiftTotal.toFixed(2)} BRL</p>
+                                    <p card-text">Total: ${sourceTotal.toFixed(2)} BRL</p>
                                     <ul class="list-group shift-list">${shiftsHTML}</ul>
-                                    <button class="btn btn-primary mt-2" onclick="openShiftModal('${month}', ${sourceIndex})">Add Shift</button>
+                                    <button class="btn btn-primary mt-2" onclick="openShiftModal('${escapeHtml(month)}', ${sourceIndex})">Add Shift</button>
                                 </div>
                             </div>
                         `;
@@ -382,7 +382,7 @@
                     content.innerHTML += `
                         <div class="tab-pane fade ${isActive} ${isShow}" id="${month}" role="tabpanel" aria-labelledby="${month}-tab">
                             <h3>Total Wage: ${totalMonthWage.toFixed(2)} BRL</h3>
-                            ${sourcesHTML || '<p>No wage sources added for this month. <button class="btn btn-primary btn-sm" onclick="openAddSourceModal(\'' + month + '\')">Add Source</button></p>'}
+                            ${sourcesHTML || '<p>No wage sources added for this month. <button class="btn btn-primary btn-sm" onclick="openAddSourceModal(\'' + escapeHtml(month) + '\')">Add Source</button></p>'}
                         </div>
                     `;
                 });
