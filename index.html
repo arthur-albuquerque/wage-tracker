@@ -268,12 +268,12 @@
         }
 
         function escapeHtml(unsafe) {
-            return unsafe
-                .replace(/&/g, "&")
-                .replace(/</g, "<")
-                .replace(/>/g, ">")
-                .replace(/"/g, """)
-                .replace(/'/g, "'");
+            return (unsafe || '')
+                .replace(/&/g, "&amp;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;")
+                .replace(/"/g, "&quot;")
+                .replace(/'/g, "&#39;");
         }
 
         function renderTabs() {
@@ -310,7 +310,7 @@
                     }
 
                     let totalMonthWage = 0;
-                    const sourcesHTML = monthData.map(source => {
+                    const sourcesHTML = monthData.map((source, sourceIndex) => {
                         if (!source.name || typeof source.baseWage !== 'number') {
                             console.error('Invalid source data:', source);
                             return '';
@@ -325,7 +325,7 @@
                         const shiftsHTML = Array.isArray(source.shifts) ? source.shifts.map((shift, idx) => `
                             <li class="list-group-item d-flex justify-content-between align-items-center">
                                 ${shift.date} - ${shift.isExtra ? '+' : '-'} ${shift.amount.toFixed(2)} BRL
-                                <button class="btn btn-danger btn-sm" onclick="deleteShift('${month}', '${escapeHtml(source.name)}', ${idx})">Delete</button>
+                                <button class="btn btn-danger btn-sm" onclick="deleteShift('${month}', '${sourceIndex}', ${idx})">Delete</button>
                             </li>
                         `).join('') : '';
 
@@ -337,7 +337,7 @@
                                     <p class="card-text">Net Shifts: ${shiftTotal.toFixed(2)} BRL</p>
                                     <p class="card-text">Total: ${sourceTotal.toFixed(2)} BRL</p>
                                     <ul class="list-group shift-list">${shiftsHTML}</ul>
-                                    <button class="btn btn-primary mt-2" onclick="openShiftModal('${month}', '${escapeHtml(source.name)}')">Add Shift</button>
+                                    <button class="btn btn-primary mt-2" onclick="openShiftModal('${month}', '${sourceIndex}')">Add Shift</button>
                                 </div>
                             </div>
                         `;
@@ -383,20 +383,21 @@
             modal.show();
         }
 
-        function openShiftModal(monthYear, sourceName) {
+        function openShiftModal(monthYear, sourceIndex) {
             try {
                 const modal = document.getElementById('addShiftModal');
                 if (!modal) throw new Error('Shift modal not found');
                 
                 modal.dataset.month = monthYear;
+                modal.dataset.sourceIndex = sourceIndex;
                 const sourceSelect = document.getElementById('shiftSource');
                 if (!sourceSelect) throw new Error('Source select element not found');
 
                 const monthData = wageData[monthYear];
                 if (!monthData) throw new Error('Month data not found: ' + monthYear);
 
-                sourceSelect.innerHTML = monthData.map(s => `
-                    <option value="${escapeHtml(s.name)}" ${s.name === sourceName ? 'selected' : ''}>${escapeHtml(s.name)}</option>
+                sourceSelect.innerHTML = monthData.map((s, idx) => `
+                    <option value="${idx}" ${idx == sourceIndex ? 'selected' : ''}>${escapeHtml(s.name)}</option>
                 `).join('');
                 const shiftModal = new bootstrap.Modal(modal);
                 shiftModal.show();
