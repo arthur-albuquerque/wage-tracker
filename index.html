@@ -17,8 +17,12 @@
 <body>
     <div class="container">
         <h1>Wage Tracker</h1>
-        <button class="btn btn-primary mb-3" data-bs-toggle="modal" data-bs-target="#addMonthModal">Add Month</button>
-        <button class="btn btn-success mb-3" onclick="downloadJSON()">Download JSON</button>
+        <div class="month-actions">
+            <button class="btn btn-primary mb-3" data-bs-toggle="modal" data-bs-target="#addMonthModal">Add Month</button>
+            <button class="btn btn-success mb-3" onclick="downloadJSON()">Download JSON</button>
+            <label for="importJson" class="btn btn-info mb-3">Import JSON</label>
+            <input type="file" id="importJson" accept=".json" style="display:none;" onchange="importJSON(event)">
+        </div>
         
         <!-- Nav Tabs for Months -->
         <ul class="nav nav-tabs" id="monthTabs" role="tablist"></ul>
@@ -262,6 +266,38 @@
             downloadAnchor.remove();
         }
 
+        function importJSON(event) {
+            const file = event.target.files[0];
+            if (!file) {
+                console.log('No file selected');
+                return;
+            }
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const importedData = JSON.parse(e.target.result);
+                    if (typeof importedData !== 'object' || importedData === null) {
+                        throw new Error('Invalid JSON data');
+                    }
+                    wageData = importedData;
+                    saveData();
+                    renderTabs();
+                    console.log('JSON imported successfully:', JSON.parse(JSON.stringify(wageData)));
+                    alert('Data imported successfully!');
+                } catch (error) {
+                    console.error('Error importing JSON:', error.message, error.stack);
+                    alert('Failed to import data. Ensure it’s a valid wage_data.json file. Check Console (F12) for details.');
+                }
+            };
+            reader.onerror = function() {
+                console.error('Error reading file');
+                alert('Error reading the file.');
+            };
+            reader.readAsText(file);
+            event.target.value = ''; // Reset input to allow re-uploading the same file
+        }
+
         function saveData() {
             localStorage.setItem('wageData', JSON.stringify(wageData));
             console.log('Saved data:', JSON.stringify(wageData));
@@ -269,11 +305,11 @@
 
         function escapeHtml(unsafe) {
             return (unsafe || '')
-                .replace(/&/g, "&amp;")
-                .replace(/</g, "&lt;")
-                .replace(/>/g, "&gt;")
-                .replace(/"/g, "&quot;")
-                .replace(/'/g, "&#39;");
+                .replace(/&/g, "&")
+                .replace(/</g, "<")
+                .replace(/>/g, ">")
+                .replace(/"/g, """)
+                .replace(/'/g, "'");
         }
 
         function renderTabs() {
