@@ -133,19 +133,29 @@
         }
 
         function saveMonth() {
+            alert('Save clicked'); // Immediate feedback
             const monthYear = document.getElementById('monthYear').value;
-            if (!monthYear) return alert('Please select a month.');
-            if (wageData[monthYear]) return alert('Month already exists.');
+            console.log('Attempting to save month:', monthYear);
+            if (!monthYear) {
+                alert('Please select a month.');
+                return;
+            }
+            if (wageData[monthYear]) {
+                alert('Month already exists.');
+                return;
+            }
 
             wageData[monthYear] = [];
-            console.log('Month saved:', monthYear);
+            console.log('Month saved successfully:', monthYear);
             saveData();
             renderTabs();
+            const newTab = new bootstrap.Tab(document.querySelector(`#${monthYear}-tab`));
+            if (newTab) newTab.show(); // Force show the new tab
             bootstrap.Modal.getInstance(document.getElementById('addMonthModal')).hide();
         }
 
         function saveSources() {
-            const monthYear = document.querySelector('#monthTabs .nav-link.active')?.textContent;
+            const monthYear = document.getElementById('addSourceModal').dataset.month;
             if (!monthYear) return alert('No active month selected.');
 
             const sources = [];
@@ -366,8 +376,6 @@
                 console.error('Error opening shift modal:', error);
             }
         }
-
-        document.getElementById('addMonthModal').addEventListener('show.bs.modal', populatePreviousSources);
 
         window.onload = renderTabs;
     </script>
