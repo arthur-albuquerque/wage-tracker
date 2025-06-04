@@ -224,7 +224,7 @@
             const monthData = wageData[monthYear];
             if (!monthData) return alert('Month data not found.');
 
-            const source = monthData[sourceIndex]; // Use index to access source
+            const source = monthData[sourceIndex];
             if (source) {
                 source.shifts.push({ date, amount, isExtra });
                 console.log('Shift saved:', { monthYear, sourceIndex, date, amount, isExtra });
@@ -241,7 +241,7 @@
             const monthData = wageData[monthYear];
             if (!monthData) return console.error('Month not found:', monthYear);
 
-            const source = monthData[sourceIndex]; // Use index to access source
+            const source = monthData[sourceIndex];
             if (source && Array.isArray(source.shifts)) {
                 source.shifts.splice(shiftIndex, 1);
                 console.log('Shift deleted:', { monthYear, sourceIndex, shiftIndex });
@@ -300,7 +300,7 @@
                 alert('Error reading the file.');
             };
             reader.readAsText(file);
-            event.target.value = ''; // Reset input to allow re-uploading the same file
+            event.target.value = '';
         }
 
         function saveData() {
@@ -310,11 +310,11 @@
 
         function escapeHtml(unsafe) {
             return (unsafe || '')
-                .replace(/&/g, "&")
-                .replace(/</g, "<")
-                .replace(/>/g, ">")
-                .replace(/"/g, """)
-                .replace(/'/g, "'");
+                .replace(/&/g, "&amp;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;")
+                .replace(/"/g, "&quot;")
+                .replace(/'/g, "&#39;");
         }
 
         function renderTabs() {
