@@ -209,7 +209,7 @@
 
         function saveShift() {
             const monthYear = document.getElementById('addShiftModal').dataset.month;
-            const sourceName = document.getElementById('shiftSource').value;
+            const sourceIndex = document.getElementById('shiftSource').value;
             const date = document.getElementById('shiftDate').value;
             const amount = parseFloat(document.getElementById('shiftAmount').value);
             const isExtra = document.getElementById('shiftType').value === 'extra';
@@ -219,31 +219,31 @@
             const monthData = wageData[monthYear];
             if (!monthData) return alert('Month data not found.');
 
-            const source = monthData.find(s => s.name === sourceName);
+            const source = monthData[sourceIndex]; // Use index to access source
             if (source) {
                 source.shifts.push({ date, amount, isExtra });
-                console.log('Shift saved:', { monthYear, sourceName, date, amount, isExtra });
+                console.log('Shift saved:', { monthYear, sourceIndex, date, amount, isExtra });
                 saveData();
                 renderTabs();
                 const modal = bootstrap.Modal.getInstance(document.getElementById('addShiftModal'));
                 if (modal) modal.hide();
             } else {
-                console.error('Source not found:', sourceName);
+                console.error('Source not found at index:', sourceIndex);
             }
         }
 
-        function deleteShift(monthYear, sourceName, shiftIndex) {
+        function deleteShift(monthYear, sourceIndex, shiftIndex) {
             const monthData = wageData[monthYear];
             if (!monthData) return console.error('Month not found:', monthYear);
 
-            const source = monthData.find(s => s.name === sourceName);
-            if (source) {
+            const source = monthData[sourceIndex]; // Use index to access source
+            if (source && Array.isArray(source.shifts)) {
                 source.shifts.splice(shiftIndex, 1);
-                console.log('Shift deleted:', { monthYear, sourceName, shiftIndex });
+                console.log('Shift deleted:', { monthYear, sourceIndex, shiftIndex });
                 saveData();
                 renderTabs();
             } else {
-                console.error('Source not found:', sourceName);
+                console.error('Source or shifts not found at index:', sourceIndex);
             }
         }
 
@@ -361,7 +361,7 @@
                         const shiftsHTML = Array.isArray(source.shifts) ? source.shifts.map((shift, idx) => `
                             <li class="list-group-item d-flex justify-content-between align-items-center">
                                 ${shift.date} - ${shift.isExtra ? '+' : '-'} ${shift.amount.toFixed(2)} BRL
-                                <button class="btn btn-danger btn-sm" onclick="deleteShift('${month}', '${sourceIndex}', ${idx})">Delete</button>
+                                <button class="btn btn-danger btn-sm" onclick="deleteShift('${month}', ${sourceIndex}, ${idx})">Delete</button>
                             </li>
                         `).join('') : '';
 
@@ -373,7 +373,7 @@
                                     <p class="card-text">Net Shifts: ${shiftTotal.toFixed(2)} BRL</p>
                                     <p class="card-text">Total: ${sourceTotal.toFixed(2)} BRL</p>
                                     <ul class="list-group shift-list">${shiftsHTML}</ul>
-                                    <button class="btn btn-primary mt-2" onclick="openShiftModal('${month}', '${sourceIndex}')">Add Shift</button>
+                                    <button class="btn btn-primary mt-2" onclick="openShiftModal('${month}', ${sourceIndex})">Add Shift</button>
                                 </div>
                             </div>
                         `;
