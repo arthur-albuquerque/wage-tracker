@@ -11,12 +11,14 @@
         .source-card { margin-bottom: 15px; }
         .shift-list { max-height: 200px; overflow-y: auto; }
         .total-wage { font-weight: bold; color: #007bff; }
+        .month-actions { margin-bottom: 10px; }
     </style>
 </head>
 <body>
     <div class="container">
         <h1>Wage Tracker</h1>
         <button class="btn btn-primary mb-3" data-bs-toggle="modal" data-bs-target="#addMonthModal">Add Month</button>
+        <button class="btn btn-success mb-3" onclick="downloadJSON()">Download JSON</button>
         
         <!-- Nav Tabs for Months -->
         <ul class="nav nav-tabs" id="monthTabs" role="tablist"></ul>
@@ -36,12 +38,39 @@
                         <label for="monthYear" class="form-label">Month (YYYY-MM)</label>
                         <input type="month" class="form-control" id="monthYear" required>
                     </div>
-                    <div id="wageSources"></div>
-                    <button type="button" class="btn btn-secondary" onclick="addSourceInput()">Add Another Source</button>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
                     <button type="button" class="btn btn-primary" onclick="saveMonth()">Save</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add Source Modal -->
+    <div class="modal fade" id="addSourceModal" tabindex="-1" aria-labelledby="addSourceModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="addSourceModalLabel">Add Source</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div id="sourceInputs">
+                        <div class="mb-3">
+                            <label for="sourceName1" class="form-label">Source Name</label>
+                            <input type="text" class="form-control source-name" id="sourceName1" placeholder="e.g., Hospital A" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="baseWage1" class="form-label">Base Wage (BRL)</label>
+                            <input type="number" class="form-control base-wage" id="baseWage1" step="0.01" min="0" required>
+                        </div>
+                    </div>
+                    <button type="button" class="btn btn-secondary" onclick="addSourceInput()">Add Another Source</button>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-primary" onclick="saveSources()">Save</button>
                 </div>
             </div>
         </div>
@@ -88,38 +117,39 @@
     <script>
         let wageData = JSON.parse(localStorage.getItem('wageData')) || {};
 
-        function addSourceInput(name = '', wage = '') {
-            const sourcesDiv = document.getElementById('wageSources');
-            const count = sourcesDiv.children.length + 1;
+        function addSourceInput(count = 1) {
+            const sourceInputs = document.getElementById('sourceInputs');
+            const existingInputs = sourceInputs.querySelectorAll('.source-input').length;
+            count = existingInputs + 1;
             const div = document.createElement('div');
             div.className = 'source-input mb-3';
             div.innerHTML = `
                 <label for="sourceName${count}" class="form-label">Source Name</label>
-                <input type="text" class="form-control source-name" id="sourceName${count}" placeholder="e.g., Hospital A" value="${name}" required>
+                <input type="text" class="form-control source-name" id="sourceName${count}" placeholder="e.g., Hospital A" required>
                 <label for="baseWage${count}" class="form-label">Base Wage (BRL)</label>
-                <input type="number" class="form-control base-wage" id="baseWage${count}" step="0.01" min="0" value="${wage}" required>
+                <input type="number" class="form-control base-wage" id="baseWage${count}" step="0.01" min="0" required>
             `;
-            sourcesDiv.appendChild(div);
-        }
-
-        function populatePreviousSources() {
-            const sourcesDiv = document.getElementById('wageSources');
-            sourcesDiv.innerHTML = '';
-            const months = Object.keys(wageData).sort().reverse();
-            if (months.length > 0) {
-                const latestMonth = months[0];
-                wageData[latestMonth].forEach(source => addSourceInput(source.name, source.baseWage));
-            } else {
-                addSourceInput();
-            }
+            sourceInputs.appendChild(div);
         }
 
         function saveMonth() {
             const monthYear = document.getElementById('monthYear').value;
             if (!monthYear) return alert('Please select a month.');
-            
+            if (wageData[monthYear]) return alert('Month already exists.');
+
+            wageData[monthYear] = [];
+            console.log('Month saved:', monthYear);
+            saveData();
+            renderTabs();
+            bootstrap.Modal.getInstance(document.getElementById('addMonthModal')).hide();
+        }
+
+        function saveSources() {
+            const monthYear = document.querySelector('#monthTabs .nav-link.active')?.textContent;
+            if (!monthYear) return alert('No active month selected.');
+
             const sources = [];
-            const sourceInputs = document.querySelectorAll('.source-input');
+            const sourceInputs = document.querySelectorAll('#sourceInputs .source-input');
             for (let input of sourceInputs) {
                 const name = input.querySelector('.source-name').value.trim();
                 const wage = parseFloat(input.querySelector('.base-wage').value);
@@ -130,11 +160,20 @@
             if (sources.length === 0) return alert('Please add at least one valid source.');
 
             wageData[monthYear] = sources;
-            console.log('Month saved:', monthYear, sources); // Debug log
+            console.log('Sources saved:', monthYear, sources);
             saveData();
             renderTabs();
-            bootstrap.Modal.getInstance(document.getElementById('addMonthModal')).hide();
-            populatePreviousSources();
+            bootstrap.Modal.getInstance(document.getElementById('addSourceModal')).hide();
+            document.getElementById('sourceInputs').innerHTML = `
+                <div class="mb-3">
+                    <label for="sourceName1" class="form-label">Source Name</label>
+                    <input type="text" class="form-control source-name" id="sourceName1" placeholder="e.g., Hospital A" required>
+                </div>
+                <div class="mb-3">
+                    <label for="baseWage1" class="form-label">Base Wage (BRL)</label>
+                    <input type="number" class="form-control base-wage" id="baseWage1" step="0.01" min="0" required>
+                </div>
+            `;
         }
 
         function saveShift() {
@@ -152,7 +191,7 @@
             const source = monthData.find(s => s.name === sourceName);
             if (source) {
                 source.shifts.push({ date, amount, isExtra });
-                console.log('Shift saved:', { monthYear, sourceName, date, amount, isExtra }); // Debug log
+                console.log('Shift saved:', { monthYear, sourceName, date, amount, isExtra });
                 saveData();
                 renderTabs();
                 bootstrap.Modal.getInstance(document.getElementById('addShiftModal')).hide();
@@ -168,7 +207,7 @@
             const source = monthData.find(s => s.name === sourceName);
             if (source) {
                 source.shifts.splice(shiftIndex, 1);
-                console.log('Shift deleted:', { monthYear, sourceName, shiftIndex }); // Debug log
+                console.log('Shift deleted:', { monthYear, sourceName, shiftIndex });
                 saveData();
                 renderTabs();
             } else {
@@ -176,18 +215,37 @@
             }
         }
 
+        function deleteMonth(monthYear) {
+            if (confirm(`Are you sure you want to delete the month ${monthYear}? This action cannot be undone.`)) {
+                delete wageData[monthYear];
+                console.log('Month deleted:', monthYear);
+                saveData();
+                renderTabs();
+            }
+        }
+
+        function downloadJSON() {
+            const dataStr = 'data:text/json;charset=utf-8,' + encodeURIComponent(JSON.stringify(wageData, null, 2));
+            const downloadAnchorNode = document.createElement('a');
+            downloadAnchorNode.setAttribute('href', dataStr);
+            downloadAnchorNode.setAttribute('download', 'wage_data.json');
+            document.body.appendChild(downloadAnchorNode);
+            downloadAnchorNode.click();
+            downloadAnchorNode.remove();
+        }
+
         function saveData() {
             localStorage.setItem('wageData', JSON.stringify(wageData));
-            console.log('Saved data:', wageData); // Debug log
+            console.log('Saved data:', wageData);
         }
 
         function escapeHtml(unsafe) {
             return unsafe
-                .replace(/&/g, "&amp;")
-                .replace(/</g, "&lt;")
-                .replace(/>/g, "&gt;")
-                .replace(/"/g, "&quot;")
-                .replace(/'/g, "&#039;");
+                .replace(/&/g, "&")
+                .replace(/</g, "<")
+                .replace(/>/g, ">")
+                .replace(/"/g, """)
+                .replace(/'/g, "'");
         }
 
         function renderTabs() {
@@ -207,9 +265,11 @@
 
                 months.forEach((month, index) => {
                     const isActive = index === 0 ? 'active' : '';
+                    const isShow = index === 0 ? 'show' : '';
                     tabs.innerHTML += `
                         <li class="nav-item" role="presentation">
                             <button class="nav-link ${isActive}" id="${month}-tab" data-bs-toggle="tab" data-bs-target="#${month}" type="button" role="tab" aria-controls="${month}" aria-selected="${index === 0}">${month}</button>
+                            <button class="btn btn-danger btn-sm ms-2" onclick="deleteMonth('${month}')">Delete Month</button>
                         </li>
                     `;
                     
@@ -254,16 +314,36 @@
                     }).filter(Boolean).join('');
 
                     content.innerHTML += `
-                        <div class="tab-pane fade ${isActive}" id="${month}" role="tabpanel" aria-labelledby="${month}-tab">
+                        <div class="tab-pane fade ${isActive} ${isShow}" id="${month}" role="tabpanel" aria-labelledby="${month}-tab">
                             <h3>Total Wage: ${totalMonthWage.toFixed(2)} BRL</h3>
-                            ${sourcesHTML || '<p>No wage sources added for this month.</p>'}
+                            ${sourcesHTML || '<p>No wage sources added for this month. <button class="btn btn-primary btn-sm" onclick="openAddSourceModal(\'' + month + '\')">Add Source</button></p>'}
                         </div>
                     `;
                 });
+
+                if (months.length > 0) {
+                    const firstTab = new bootstrap.Tab(document.querySelector('#monthTabs .nav-link'));
+                    firstTab.show();
+                }
             } catch (error) {
                 console.error('Error rendering tabs:', error);
                 document.getElementById('monthTabContent').innerHTML = '<p>Error loading data. Check console for details.</p>';
             }
+        }
+
+        function openAddSourceModal(monthYear) {
+            document.getElementById('addSourceModal').dataset.month = monthYear;
+            document.getElementById('sourceInputs').innerHTML = `
+                <div class="mb-3">
+                    <label for="sourceName1" class="form-label">Source Name</label>
+                    <input type="text" class="form-control source-name" id="sourceName1" placeholder="e.g., Hospital A" required>
+                </div>
+                <div class="mb-3">
+                    <label for="baseWage1" class="form-label">Base Wage (BRL)</label>
+                    <input type="number" class="form-control base-wage" id="baseWage1" step="0.01" min="0" required>
+                </div>
+            `;
+            new bootstrap.Modal(document.getElementById('addSourceModal')).show();
         }
 
         function openShiftModal(monthYear, sourceName) {
